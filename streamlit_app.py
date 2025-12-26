@@ -3,49 +3,39 @@ from ultralytics import YOLO
 import cv2
 import numpy as np
 import tempfile
-from PIL import Image
 
-# =========================
-# Load YOLO model (Cloud-safe)
-# =========================
+st.set_page_config(page_title="Deteksi Helm", layout="wide")
+
+# Load YOLO model (path RELATIF)
 @st.cache_resource
 def load_model():
-    return YOLO("best_helmet_yolov8.pt")  # pastikan file ini ada di repo
+    return YOLO("best_helmet_yolov8.pt")
 
 model = load_model()
 
-# =========================
-# UI
-# =========================
-st.title("Deteksi Kepatuhan Helm Pada Pengendara Sepeda Motor")
+st.title("🪖 Deteksi Kepatuhan Helm Pada Pengendara Sepeda Motor")
 st.write("Upload gambar atau video untuk mendeteksi penggunaan helm.")
 
 uploaded_file = st.file_uploader(
-    "Upload image or video",
+    "Upload image atau video",
     type=["jpg", "jpeg", "png", "mp4", "avi", "mov"]
 )
 
-# =========================
-# Image Processing
-# =========================
 if uploaded_file is not None:
+
+    # ================= IMAGE =================
     if uploaded_file.type.startswith("image"):
-        image = Image.open(uploaded_file).convert("RGB")
-        img_array = np.array(image)
+        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
-        results = model(img_array)
+        results = model(img)
         annotated_img = results[0].plot()
+        annotated_img = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
 
-        st.image(
-            annotated_img,
-            caption="Hasil Deteksi",
-            use_column_width=True
-        )
+        st.image(annotated_img, caption="Hasil Deteksi", use_container_width=True)
 
-    # =========================
-    # Video Processing
-    # =========================
-    elif uploaded_file.type.startswith("video"):
+    # ================= VIDEO =================
+    else:
         tfile = tempfile.NamedTemporaryFile(delete=False)
         tfile.write(uploaded_file.read())
 
@@ -58,9 +48,9 @@ if uploaded_file is not None:
                 break
 
             results = model(frame)
-            annotated_frame = results[0].plot()
-            annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+            output_frame = results[0].plot()
+            output_frame = cv2.cvtColor(output_frame, cv2.COLOR_BGR2RGB)
 
-            stframe.image(annotated_frame, use_column_width=True)
+            stframe.image(output_frame, use_container_width=True)
 
         cap.release()
