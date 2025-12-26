@@ -1,55 +1,33 @@
 import streamlit as st
 import numpy as np
-import cv2
+from PIL import Image
 from ultralytics import YOLO
 
-st.set_page_config(page_title="Deteksi Helm", layout="wide")
+st.set_page_config(page_title="Deteksi Helm", layout="centered")
 
-# Load YOLO model (path RELATIF)
 @st.cache_resource
 def load_model():
     return YOLO("best_helmet_yolov8.pt")
 
 model = load_model()
 
-st.title("🪖 Deteksi Kepatuhan Helm Pada Pengendara Sepeda Motor")
-st.write("Upload gambar atau video untuk mendeteksi penggunaan helm.")
+st.title("🪖 Deteksi Kepatuhan Helm (Image Only)")
+st.write("Upload GAMBAR. Video TIDAK didukung di Streamlit Cloud.")
 
 uploaded_file = st.file_uploader(
-    "Upload image atau video",
-    type=["jpg", "jpeg", "png", "mp4", "avi", "mov"]
+    "Upload image",
+    type=["jpg", "jpeg", "png"]
 )
 
-if uploaded_file is not None:
+if uploaded_file:
+    image = Image.open(uploaded_file).convert("RGB")
+    img_array = np.array(image)
 
-    # ================= IMAGE =================
-    if uploaded_file.type.startswith("image"):
-        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    results = model(img_array)
+    annotated = results[0].plot()
 
-        results = model(img)
-        annotated_img = results[0].plot()
-        annotated_img = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
-
-        st.image(annotated_img, caption="Hasil Deteksi", use_container_width=True)
-
-    # ================= VIDEO =================
-    else:
-        tfile = tempfile.NamedTemporaryFile(delete=False)
-        tfile.write(uploaded_file.read())
-
-        cap = cv2.VideoCapture(tfile.name)
-        stframe = st.empty()
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            results = model(frame)
-            output_frame = results[0].plot()
-            output_frame = cv2.cvtColor(output_frame, cv2.COLOR_BGR2RGB)
-
-            stframe.image(output_frame, use_container_width=True)
-
-        cap.release()
+    st.image(
+        annotated,
+        caption="Hasil Deteksi",
+        use_container_width=True
+    )
